@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Presensi Kehadiran</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      body {
+        background-color: #f4f6f9;
+      }
+      .card-custom {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+      #sigCanvas {
+        border: 2px dashed #0d6efd;
+        border-radius: 8px;
+        background-color: #ffffff;
+        cursor: crosshair;
+        touch-action: none;
+        width: 100%;
+        height: 160px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+          <div class="card card-custom p-4">
+            <div style="line-height: 1.2; font-family: sans-serif" class="text-center mb-3">
+              <h4 class="fw-bold text-primary" style="margin-bottom: 2px">FORM PRESENSI KEHADIRAN</h4>
+              <span class="text-muted small" style="display: block; font-size: 0.85rem; margin-bottom: 2px">GEDUNG BARU PONDOK HAJJAH NURIYAH SHABRAN</span>
+              <span class="text-muted small" style="display: block; font-size: 0.85rem">13 JUMADIL AWWAL 1448 / 24 OKTOBER 2026</span>
+            </div>
+
+            <div id="alertSuccess" class="alert alert-success d-none" role="alert">✅ Terima kasih! Presensi dan tanda tangan Anda berhasil disimpan.</div>
+
+            <form id="presenceForm">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Nama Lengkap <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="nama" placeholder="Masukkan Nama Lengkap" required />
+              </div>
+
+              <!-- Elemen Jabatan Sesuai Pilihan Anda -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Jabatan <span class="text-danger">*</span></label>
+                <select class="form-select" name="atasNama" id="atasNamaSelect" required onchange="toggleDetailInput()">
+                  <option value="" disabled selected>-- Pilih Jabatan --</option>
+                  <option value="Kepala Desa Makam Haji">Kepala Desa Makam Haji</option>
+                  <option value="Ketua RW 012">Ketua RW 012</option>
+                  <option value="Ketua RT 01 RW 012">Ketua RT 01 RW 012</option>
+                  <option value="Ketua RT 02 RW 012">Ketua RT 02 RW 012</option>
+                  <option value="Ketua RT 03 RW 012">Ketua RT 03 RW 012</option>
+                  <option value="Ketua Takmir Masjid Syarif">Ketua Takmir Masjid Syarif</option>
+                  <option value="Ketua Takmir Masjid Taqwa">Ketua Takmir Masjid Taqwa</option>
+                  <option value="Ketua Takmir Masjid Utsman">Ketua Takmir Masjid Utsman</option>
+                  <option value="Ketua Karang Taruna Saripan">Ketua Karang Taruna Saripan</option>
+                  <option value="Ketua Karang Taruna Dukuh">Ketua Karang Taruna Dukuh</option>
+                  <option value="Shobron Bakery">Shobron Bakery</option>
+                  <option value="Kepala LPPIK UMS">Kepala LPPIK UMS</option>
+                  <option value="Ketua PRM Makam Haji">Ketua PRM Makam Haji</option>
+                  <option value="Ketua PRA Makam Haji">Ketua PRA Makam Haji</option>
+                  <option value="Ketua PCM Kartasura">Ketua PCM Kartasura</option>
+                  <option value="Sekretaris PCM Kartasura">Sekretaris PCM Kartasura</option>
+                  <option value="Ketua IPHI Makam Haji/ PRM">Ketua IPHI Makam Haji/PRM</option>
+                  <option value="Warga">Warga</option>
+                  <option value="Mahasantri">Mahasantri</option>
+                  <option value="Undangan Khusus">Undangan Khusus</option>
+                </select>
+              </div>
+
+              <!-- Input Keterangan Tambahan (Tampil jika memilih Warga/Mahasantri/Undangan Khusus) -->
+              <div class="mb-3 d-none" id="detailInputGroup">
+                <label class="form-label fw-semibold" id="detailLabel">Keterangan / Detail Tambahan</label>
+                <input type="text" class="form-control" name="detailPerwakilan" id="detailPerwakilanInput" placeholder="Masukkan detail perwakilan / alamat / keterangan tambahan" />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Tanda Tangan Digital <span class="text-danger">*</span></label>
+                <canvas id="sigCanvas"></canvas>
+                <input type="hidden" name="signatureData" id="signatureData" />
+                <div class="d-flex justify-content-between mt-1">
+                  <small class="text-muted">Goreskan tanda tangan di dalam kotak di atas</small>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearCanvas()">Bersihkan Canvas</button>
+                </div>
+              </div>
+
+              <button type="submit" id="btnSubmit" class="btn btn-primary w-100 py-2 fw-bold mt-2">Kirim Presensi</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("sigCanvas");
+      const ctx = canvas.getContext("2d");
+      let drawing = false;
+      let isCanvasDrawn = false;
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#000000";
+      }
+      window.addEventListener("load", resizeCanvas);
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      }
+
+      function startDraw(e) {
+        drawing = true;
+        isCanvasDrawn = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        e.preventDefault();
+      }
+      function draw(e) {
+        if (!drawing) return;
+        const p = getPos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        e.preventDefault();
+      }
+      function endDraw() {
+        drawing = false;
+      }
+
+      canvas.addEventListener("mousedown", startDraw);
+      canvas.addEventListener("mousemove", draw);
+      canvas.addEventListener("mouseup", endDraw);
+      canvas.addEventListener("touchstart", startDraw);
+      canvas.addEventListener("touchmove", draw);
+      canvas.addEventListener("touchend", endDraw);
+
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        isCanvasDrawn = false;
+      }
+
+      function toggleDetailInput() {
+        const val = document.getElementById("atasNamaSelect").value;
+        const group = document.getElementById("detailInputGroup");
+        
+        // Tampilkan kolom keterangan jika opsi berikut dipilih
+        const requireDetail = ["Warga", "Mahasantri", "Undangan Khusus"];
+        if (requireDetail.includes(val)) {
+          group.classList.remove("d-none");
+        } else {
+          group.classList.add("d-none");
+          document.getElementById("detailPerwakilanInput").value = "";
+        }
+      }
+
+      document.getElementById("presenceForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        if (!isCanvasDrawn) {
+          alert("Harap goreskan tanda tangan digital Anda terlebih dahulu pada kotak yang disediakan.");
+          return;
+        }
+
+        const sigData = canvas.toDataURL("image/png");
+        document.getElementById("signatureData").value = sigData;
+
+        const btn = document.getElementById("btnSubmit");
+        btn.disabled = true;
+        btn.innerHTML = "Menyimpan...";
+
+        google.script.run
+          .withSuccessHandler(function (res) {
+            btn.disabled = false;
+            btn.innerHTML = "Kirim Presensi";
+            if (res.success) {
+              document.getElementById("presenceForm").reset();
+              clearCanvas();
+              document.getElementById("detailInputGroup").classList.add("d-none");
+              document.getElementById("alertSuccess").classList.remove("d-none");
+              setTimeout(() => document.getElementById("alertSuccess").classList.add("d-none"), 5000);
+            } else {
+              alert("Terjadi kesalahan: " + res.error);
+            }
+          })
+          .processForm(this);
+      });
+    </script>
+  </body>
+</html>
